@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 100
+exclude = ["__pycache__"]
+
+[tool.ruff.lint]
+ignore = ["E501"]
+select = ["E", "F", "W"]
+
+[tool.black]
+line-length = 100

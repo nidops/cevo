@@ -1,0 +1,34 @@
+# === Build Artifacts ===
+/build/
+*.o
+*.a
+*.out
+*.map
+
+# === Auto-Generated Files ===
+/apis/
+
+# === Python Bytecode ===
+__pycache__/
+/*.py[cod]
+*.py[cod]
+
+# === Virtual Environments ===
+.venv/
+venv/
+
+# === Editor / IDE Files ===
+.vscode/
+*.swp
+*.swo
+*.log
+
+# === CTags / IDE Index Files ===
+tags
+.tags
+TAGS
+
+# === Misc ===
+*.bak
+*.tmp
+*.orig

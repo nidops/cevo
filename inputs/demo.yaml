@@ -1,0 +1,35 @@
+includes:
+  - demo.h
+
+commands:
+  - name: cat_string
+    handler: demo_cat_string
+    args:
+      - type: string
+
+  - name: cat_byte
+    handler: demo_cat_byte
+    args:
+      - type: u8
+
+  - name: cat_bytes
+    handler: demo_cat_bytes
+    args:
+      - type: u8p
+      - type: u8
+
+  - name: void
+    handler: demo_void
+    args: []
+
+  - name: cat_mixed
+    handler: demo_cat_mixed
+    args:
+      - type: u8p
+      - type: u8p
+      - type: s 
+      - type: s 
+      - type: u8p
+      - type: i64
+      - type: u32
+
