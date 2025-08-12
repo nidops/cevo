@@ -19,10 +19,17 @@
 #include "ce_dispatch.h"
 #include "ce_hash.h"
 
+
+/**
+ * @brief Scratch buffer for parsed binary arguments.
+ *
+ * Holds decoded bytes (e.g., from hex strings) during argument parsing.
+ * Lifetime is limited to the dispatch call.
+ */
 typedef struct {
-    uint8_t buffer[MAX_ARG_CONTENT_SIZE];
-    size_t used;
-} scratch_buffer_st;
+    uint8_t buffer[MAX_ARG_CONTENT_SIZE];  /**< Decoded byte storage. */
+    size_t  used;                          /**< Bytes currently used in buffer. */
+} scratch_bytes_st;
 
 
 #define IS_WHITESPACE(c) ((c) == ' ' || (c) == '\t' || (c) == '\r' || (c) == '\n')
@@ -62,7 +69,7 @@ static bool validate_argument_count(size_t tokens_count, const ce_signature_st *
 static bool parse_value_by_type(ce_arg_type_et type_e,
                                 const char *token_cp,
                                 ce_arg_value_ut *out_val_p,
-                                scratch_buffer_st *scratch)
+                                scratch_bytes_st *scratch_bytes_s)
 {
     if ((NULL == token_cp) || (NULL == out_val_p))
     {
@@ -104,21 +111,30 @@ static bool parse_value_by_type(ce_arg_type_et type_e,
             return true;
 
         case TYPE_UINT8_PTR_e:
-            if (NULL == scratch)
+            if (NULL == scratch_bytes_s)
             {
                 LOG_ERR(CE_FILE_DISPATCH_e, "Null scratch buffer");
                 return false;
             }
+            if (scratch_bytes_s->used >= MAX_ARG_CONTENT_SIZE)
+            {
+                LOG_ERR(CE_FILE_DISPATCH_e, "Scratch buffer exhausted");
+                return false;
+            }
 
             size_t bytes_len = 0;
-            if (!parse_hex_string(token_cp, scratch->buffer + scratch->used, MAX_ARG_CONTENT_SIZE, &bytes_len))
+            size_t remaining = MAX_ARG_CONTENT_SIZE - scratch_bytes_s->used;
+            if (!parse_hex_string(token_cp,
+                                  scratch_bytes_s->buffer + scratch_bytes_s->used,
+                                  remaining,
+                                  &bytes_len))
             {
                 LOG_ERR(CE_FILE_DISPATCH_e, "Failed to parse hex string: '%s'", token_cp);
                 return false;
             }
 
-            out_val_p->bytes_u8p = scratch->buffer + scratch->used;
-            scratch->used += bytes_len;
+            out_val_p->bytes_u8p = scratch_bytes_s->buffer + scratch_bytes_s->used;
+            scratch_bytes_s->used += bytes_len;
 
             return true;
 
@@ -150,12 +166,12 @@ static bool parse_value_by_type(ce_arg_type_et type_e,
 static bool parse_arguments(const ce_signature_st *sig_pst,
                             char *tokens_ca[],
                             ce_arg_value_ut out_args_a[MAX_TOKENS],
-                            scratch_buffer_st *scratch)
+                            scratch_bytes_st *scratch_bytes_s)
 {
-    if ((NULL == sig_pst)    ||
-        (NULL == tokens_ca)  ||
-        (NULL == out_args_a) ||
-        (NULL == scratch))
+    if ((NULL == sig_pst)          ||
+        (NULL == tokens_ca)        ||
+        (NULL == out_args_a)       ||
+        (NULL == scratch_bytes_s))
     {
         LOG_ERR(CE_FILE_DISPATCH_e, "Null pointer");
         return false;
@@ -178,7 +194,7 @@ static bool parse_arguments(const ce_signature_st *sig_pst,
             return false;
         }
 
-        if (!parse_value_by_type(type_e, token_cp, &out_args_a[i], scratch))
+        if (!parse_value_by_type(type_e, token_cp, &out_args_a[i], scratch_bytes_s))
         {
             LOG_ERR(CE_FILE_DISPATCH_e,
                     "Failed to parse argument %u as type %d (token: '%s')",
@@ -266,7 +282,7 @@ static bool parse_line_to_tokens(char *line, char *tokens[], size_t *tokens_coun
     }
 
     /* Now skip and null-terminate trailing whitespace */
-    while ((*ptr != '\0') && IS_WHITESPACE(*ptr))
+    while (('\0' != *ptr) && IS_WHITESPACE(*ptr))
     {
         *ptr = '\0';
         ptr++;
@@ -295,7 +311,7 @@ static bool parse_line_to_tokens(char *line, char *tokens[], size_t *tokens_coun
 static bool dispatch_command(const ce_signature_st *sig_pst, char *tokens_ca[])
 {
     ce_arg_value_ut args_a[MAX_TOKENS] = {0};
-    scratch_buffer_st scratch = { .used = 0u };
+    scratch_bytes_st scratch_bytes_s = { .used = 0u };
 
     if ((NULL == sig_pst) || (NULL == tokens_ca))
     {
@@ -303,7 +319,7 @@ static bool dispatch_command(const ce_signature_st *sig_pst, char *tokens_ca[])
         return false;
     }
 
-    if (!parse_arguments(sig_pst, tokens_ca, args_a, &scratch))
+    if (!parse_arguments(sig_pst, tokens_ca, args_a, &scratch_bytes_s))
     {
         LOG_ERR(CE_FILE_DISPATCH_e, "Failed to parse command arguments");
         return false;
@@ -388,9 +404,9 @@ bool _test_validate_argument_count(int tokens_count, const ce_signature_st *sig_
 bool _test_parse_arguments(const ce_signature_st *sig_pst,
                            char *tokens_ca[],
                            ce_arg_value_ut out_args_a[MAX_TOKENS],
-                           scratch_buffer_st *scratch)
+                           scratch_bytes_st *scratch_bytes_s)
 {
-    return parse_arguments(sig_pst, tokens_ca, out_args_a, scratch);
+    return parse_arguments(sig_pst, tokens_ca, out_args_a, scratch_bytes_s);
 }
 
 bool _test_parse_line_to_tokens(char *line, char *tokens[], size_t *tokens_count)

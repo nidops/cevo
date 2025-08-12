@@ -273,47 +273,47 @@ bool parse_u64(const char *s, uint64_t *out)
 
 bool parse_i8(const char *s, int8_t *out)
 {
-    int32_t tmp = 0;
+    int32_t value = 0;
 
     if ((NULL == s) || (NULL == out))
     {
         return false;
     }
 
-    if (!parse_i32(s, &tmp))
+    if (!parse_i32(s, &value))
     {
         return false;
     }
 
-    if ((tmp < INT8_MIN) || (tmp > INT8_MAX))
+    if ((value < INT8_MIN) || (value > INT8_MAX))
     {
         return false;
     }
 
-    *out = (int8_t)tmp;
+    *out = (int8_t)value;
     return true;
 }
 
 bool parse_i16(const char *s, int16_t *out)
 {
-    int32_t tmp = 0;
+    int32_t value = 0;
 
     if ((NULL == s) || (NULL == out))
     {
         return false;
     }
 
-    if (!parse_i32(s, &tmp))
+    if (!parse_i32(s, &value))
     {
         return false;
     }
 
-    if ((tmp < INT16_MIN) || (tmp > INT16_MAX))
+    if ((value < INT16_MIN) || (value > INT16_MAX))
     {
         return false;
     }
 
-    *out = (int16_t)tmp;
+    *out = (int16_t)value;
     return true;
 }
 
@@ -365,7 +365,7 @@ bool parse_i32(const char *s, int32_t *out)
          * For negative: max = INT32_MAX + 1 (i.e. -2147483648)
          * For positive: max = INT32_MAX (i.e.  2147483647)
          */
-        uint32_t max_before_mul = (negative != false)
+        uint32_t max_before_mul = (negative)
                                   ? ((uint32_t)INT32_MAX + 1u)
                                   : ((uint32_t)INT32_MAX);
 
@@ -385,7 +385,7 @@ bool parse_i32(const char *s, int32_t *out)
         ++s;
     }
 
-    *out = (negative != false) ? -(int32_t)value : (int32_t)value;
+    *out = (negative) ? -(int32_t)value : (int32_t)value;
     return true;
 }
 
@@ -434,7 +434,7 @@ bool parse_i64(const char *s, int64_t *out)
         }
 
         /* Determine max allowed value before multiplication */
-        uint64_t max_before_mul = (negative != false)
+        uint64_t max_before_mul = (negative)
                                   ? ((uint64_t)INT64_MAX + 1u)
                                   : ((uint64_t)INT64_MAX);
 
@@ -454,7 +454,7 @@ bool parse_i64(const char *s, int64_t *out)
         ++s;
     }
 
-    *out = (negative != false) ? -(int64_t)value : (int64_t)value;
+    *out = (negative) ? -(int64_t)value : (int64_t)value;
     return true;
 }
 

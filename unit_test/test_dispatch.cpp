@@ -187,6 +187,22 @@ TEST(ParseArguments, MixedTypesParseCorrectly) {
     EXPECT_EQ(args[2].u32, 4294967295U);
 }
 
+TEST(ParseArguments, Uint8PtrRejectsOverflow) {
+    ce_arg_type_et types[] = { TYPE_UINT8_PTR_e, TYPE_UINT8_PTR_e };
+    ce_signature_st sig = { .types_e = types, .type_count_u8 = 2 };
+
+    std::string hex1;
+    for (size_t i = 0; i < MAX_ARG_CONTENT_SIZE; ++i) {
+        hex1 += "AA";
+    }
+    std::string hex2 = "BB";
+
+    char* tokens[] = { (char*)"cmd", hex1.data(), hex2.data() };
+    ce_arg_value_ut args[MAX_TOKENS] = {};
+
+    EXPECT_FALSE(_test_parse_arguments(&sig, tokens, args));
+}
+
 // -----------------------------------------------------------------------------
 // Tokenizer Tests
 // -----------------------------------------------------------------------------
