@@ -52,7 +52,7 @@ endif()
 # Only add own includes; caller sets its own include paths and flags
 target_include_directories(cevo PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/inc
-    ${CMAKE_CURRENT_SOURCE_DIR}/apis
+    ${CEVO_API_DIR}
 )
 
 # Ensure generated files are built before cevo
@@ -86,4 +86,4 @@ install(TARGETS cevo
 )
 
 install(DIRECTORY inc/ DESTINATION include)
-install(DIRECTORY apis/ DESTINATION include)
+install(FILES ${GENERATED_HDRS} DESTINATION include)

@@ -77,9 +77,12 @@ if(NOT EXISTS ${INPUT_YAML})
 endif()
 message(STATUS "📄 INPUT_YAML: ${INPUT_YAML}")
 
-# Ensure apis/ directory exists
-set(API_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../apis)
+# Each build owns its generated APIs. Shared source checkouts are never outputs.
+set(CEVO_API_DIR "${CMAKE_CURRENT_BINARY_DIR}/apis")
+set(API_DIR "${CEVO_API_DIR}")
+set(CEVO_API_DIR "${CEVO_API_DIR}" PARENT_SCOPE)
 file(MAKE_DIRECTORY ${API_DIR})
+file(GLOB GENERATOR_MODULES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.py")
 
 # Output paths
 set(GENERATED_HEADER   ${API_DIR}/ce_command_ids.h)
@@ -99,7 +102,7 @@ add_custom_command(
             --header ${GENERATED_HEADER}
             --sigtable ${GENERATED_SIGTABLE}
             --invoke ${GENERATED_INVOKE}
-    DEPENDS ${INPUT_YAML} ${GENERATOR_SCRIPT}
+    DEPENDS ${INPUT_YAML} ${GENERATOR_MODULES}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "🛠 Generating APIs from YAML..."
     VERBATIM

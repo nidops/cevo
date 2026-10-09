@@ -35,7 +35,7 @@ Built for test consoles, debug shells, field diagnostics, and scriptable command
 │ ├── logger.h
 │ ├── parser_utils.c
 │ └── parser_utils.h
-├── apis/               # Generated files
+├── build/tools/apis/   # Generated files, isolated in each CMake build
 ├── inputs/             # Example YAML command definitions
 │ └── demo.yaml
 ├── tools/              # Python scripts for code generation and testing

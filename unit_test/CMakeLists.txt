@@ -44,10 +44,6 @@ set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fsanitize=add
 # --------------------------------------------------------------------
 # Executable for Tests
 # --------------------------------------------------------------------
-message(STATUS "Looking for generated files in: ${CMAKE_SOURCE_DIR}/apis")
-file(GLOB GENERATED_FILES ${CMAKE_SOURCE_DIR}/apis/*.c)
-message(STATUS "Generated files: ${GENERATED_FILES}")
-
 add_executable(test_cevo ${UNIT_TEST_SOURCES})
 
 # Ensure generated files are built before the test
@@ -59,7 +55,7 @@ add_dependencies(test_cevo generate_apis)
 target_include_directories(test_cevo
     PRIVATE
     ${CMAKE_SOURCE_DIR}/inc        # Public API
-    ${CMAKE_SOURCE_DIR}/apis       # Generated API
+    ${CEVO_API_DIR}               # Generated API (owned by this build)
     ${CMAKE_SOURCE_DIR}/src        # Internal headers (test-only)
     ${CMAKE_CURRENT_SOURCE_DIR}    # Local test headers/mocks
 )
