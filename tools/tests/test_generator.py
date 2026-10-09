@@ -5,6 +5,9 @@ Unit tests for C code generation.
 
 import sys
 import os
+from pathlib import Path
+import shutil
+import subprocess
 import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -133,3 +136,27 @@ def test_enum_hash_values():
         value_str = f"= 0x{value:08X}u"
         assert enum_line in content
         assert value_str in content
+
+
+@pytest.mark.skipif(shutil.which("cc") is None, reason="C compiler required")
+@pytest.mark.parametrize("argument_type,valid", [("uint8_t", True), ("uint16_t", False)])
+def test_signature_checks_compile_under_c99_and_reject_mismatches(tmp_path, argument_type, valid):
+    commands = [{"name": "ping", "handler": "ping_handler", "args": [{"type": "uint8"}]}]
+    (tmp_path / "handlers.h").write_text(
+        f"#include <stdbool.h>\n#include <stdint.h>\nbool ping_handler({argument_type});\n"
+    )
+    HeaderGenerator(commands).write_to(tmp_path / "ce_command_ids.h")
+    source = tmp_path / "ce_table.c"
+    SignatureTableGenerator(commands, ["handlers.h"]).write_to(source)
+    result = subprocess.run(
+        ["cc", "-std=c99", "-fsyntax-only", "-I", str(Path(__file__).parents[2] / "inc"), str(source)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    if valid:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0
+        # Some C99 libcs implement _Static_assert with a bit-field fallback.
+        assert "Signature mismatch" in result.stderr or "CE_ASSERT_ARGS" in result.stderr

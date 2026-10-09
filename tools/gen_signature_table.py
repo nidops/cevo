@@ -57,7 +57,7 @@ class SignatureTableGenerator:
             "#if defined(__GNUC__) || defined(__clang__)",
             "#define CE_ASSERT_ARGS(fn, ...)                  \\",
             "    _Static_assert(__builtin_types_compatible_p( \\",
-            "        typeof(&(fn)), bool (*)(__VA_ARGS__)     \\",
+            "        __typeof__(&(fn)), bool (*)(__VA_ARGS__) \\",
             '    ), "Signature mismatch: " #fn)',
             "#else",
             '#warning "CE_ASSERT_ARGS: function signature checks not available on this compiler!"',
