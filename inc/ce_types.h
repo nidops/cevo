@@ -7,7 +7,7 @@
  * including argument types, their encoded values, and macros for extracting
  * raw values in a type-safe, scalable way.
  *
- * Only MISRA-friendly types are supported here.
+ * Integer arguments use explicitly sized types.
  */
 
 #ifndef CE_TYPES_H
@@ -33,7 +33,7 @@ extern "C" {
  * These types represent how each parsed argument should be interpreted
  * when dispatching to a command handler.
  *
- * Only explicitly-sized MISRA-compliant types are allowed.
+ * Integer variants have explicit widths; strings and bytes use borrowed pointers.
  */
 typedef enum {
     TYPE_UINT8_e,       /**< 8-bit unsigned integer */

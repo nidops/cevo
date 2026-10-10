@@ -58,6 +58,7 @@ target_include_directories(test_cevo
     ${CEVO_API_DIR}               # Generated API (owned by this build)
     ${CMAKE_SOURCE_DIR}/src        # Internal headers (test-only)
     ${CMAKE_CURRENT_SOURCE_DIR}    # Local test headers/mocks
+    ${CMAKE_CURRENT_SOURCE_DIR}/../examples
 )
 
 # --------------------------------------------------------------------

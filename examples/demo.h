@@ -7,6 +7,7 @@
 extern "C" {
 #endif
 
+#include <stdbool.h>
 #include <stdint.h>
 
 bool demo_cat_string(const char* s);

@@ -70,3 +70,33 @@ def test_codegen_is_build_local_and_profile_changes_regenerate(tmp_path):
     assert "CE_CMD_BETA_e" in header_a.read_text()
     assert "CE_CMD_ALPHA_e" not in header_a.read_text()
     assert header_b.read_bytes() == old_b
+
+
+@pytest.mark.skipif(
+    shutil.which("cmake") is None or shutil.which("ninja") is None,
+    reason="CMake and Ninja required",
+)
+def test_default_library_builds_and_installs_without_unit_tests(tmp_path):
+    root = Path(__file__).parents[2]
+    build = tmp_path / "build"
+    prefix = tmp_path / "install"
+    for command in (
+        [
+            "cmake",
+            "-G",
+            "Ninja",
+            "-S",
+            str(root),
+            "-B",
+            str(build),
+            "-DBUILD_TESTS=OFF",
+            f"-DPython_EXECUTABLE={sys.executable}",
+        ],
+        ["cmake", "--build", str(build)],
+        ["cmake", "--install", str(build), "--prefix", str(prefix)],
+    ):
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
+    assert (prefix / "lib/libcevo.a").is_file()
+    assert (prefix / "include/ce_dispatch.h").is_file()
+    assert (prefix / "include/ce_command_ids.h").is_file()
+    assert not (build / "unit_test/test_cevo").exists()

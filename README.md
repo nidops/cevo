@@ -1,155 +1,113 @@
-# CEVO - Command Engine
+# CEVO — Command Engine
 
-CEVO is a lightweight command parser.
-It turns simple text commands into safe, validated function calls, with strict type checking, zero dynamic memory, and fast dispatching based on precomputed hashes.
-Built for test consoles, debug shells, field diagnostics, and scriptable command interfaces, all wrapped in a MISRA-C-friendly codebase (with just a dash of rebellion). 😅
+CEVO generates a C command interface from YAML and dispatches text commands to
+application handlers. It suits embedded test consoles and diagnostic interfaces
+that need bounded parsing without heap allocation.
 
-## Features
+Command names use precomputed 32-bit DJB2 hashes. The generator rejects collisions
+within the configured command set and emits handler signature checks for GCC and
+Clang. Runtime parsing checks argument counts, scalar types and numeric ranges.
 
-* Runtime command parsing from text input with tokenization and type validation
-* Supports multiple argument types (uint8, int64, strings, boolean, binary arrays)
-* Hash-based command dispatch
-* Zero dynamic memory allocation
-* Drop-in C integration, no runtime registry or magic
-* Unit tests using GoogleTest
-* MISRA-C friendly codebase, optimized for clarity and maintainability
+## Build
 
-## Project Structure
-
-```
-├── build.sh            # Build helper script
-├── CMakeLists.txt      # Root CMake configuration
-├── Makefile
-├── LICENSE             # Apache-2.0
-├── README.md
-├── inc/                # Public headers
-│ ├── ce_dispatch.h
-│ ├── ce_hash.h
-│ ├── ce_invoke_handler.h
-│ ├── ce_table.h
-│ └── ce_types.h
-├── src/                # Source code implementations
-│ ├── ce_dispatch.c
-│ ├── ce_hash.c
-│ ├── logger.c
-│ ├── logger.h
-│ ├── parser_utils.c
-│ └── parser_utils.h
-├── build/tools/apis/   # Generated files, isolated in each CMake build
-├── inputs/             # Example YAML command definitions
-│ └── demo.yaml
-├── tools/              # Python scripts for code generation and testing
-│ ├── cli.py
-│ ├── generate_apis.py
-│ ├── gen_header.py
-│ ├── gen_invoke_handler.py
-│ ├── gen_signature_table.py
-│ ├── main.py
-│ ├── parser.py
-│ ├── tests/          # Python unit tests for tooling
-│ │ ├── test_generator.py
-│ │ ├── test_parser.py
-│ │ └── test_utils.py
-│ └── utils.py
-└── unit_test/          # Main project unit tests with GoogleTest
-    ├── ce_dispatch_test_api.h
-    ├── CMakeLists.txt
-    ├── demo.h
-    ├── test_dispatch.cpp
-    ├── test_hash.cpp
-    └── test_parser_utils.cpp
-```
-
-## Getting Started
-
-### Building
-
-Use your preferred C build system (Make, CMake, etc.). Example with CMake:
+Use CMake 3.20 or newer, a C compiler and Python with `ruamel.yaml`. Run these
+commands from the checkout:
 
 ```bash
-mkdir build && cd build
-cmake ..
-make
+python3 -m venv .venv
+.venv/bin/python -m pip install ruamel.yaml pytest
+cmake -S . -B build -DPython_EXECUTABLE="$PWD/.venv/bin/python"
+cmake --build build
 ```
 
-Or run the included `build.sh` helper script.
+The default build creates `libcevo.a` using `inputs/demo.yaml`. Its handler
+prototypes live in `examples/demo.h`; an application provides the implementations
+when linking the library. Building the archive does not require GoogleTest.
 
-### Usage
+Generated headers and sources live in each build's `tools/apis/` directory.
+Concurrent builds can select different YAML files without changing the source
+checkout or overwriting another build's command table.
 
-Include the public header:
+## Integrate an application
+
+Define commands and include the header declaring their handlers:
+
+```yaml
+includes:
+  - handlers.h
+commands:
+  - name: add
+    handler: handle_add
+    args:
+      - type: u32
+      - type: u32
+```
+
+```c
+/* handlers.h */
+#include <stdbool.h>
+#include <stdint.h>
+bool handle_add(uint32_t a, uint32_t b);
+```
+
+Configure `INPUT_YAML`, add CEVO to the application's CMake build, and supply the
+handler header directory to the `cevo` target:
+
+```cmake
+set(INPUT_YAML "${CMAKE_CURRENT_SOURCE_DIR}/commands.yaml" CACHE FILEPATH "Command profile")
+add_subdirectory(../cevo cevo_build)
+target_include_directories(cevo PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/inc")
+target_link_libraries(app PRIVATE cevo)
+```
+
+Implement the handlers in your application and dispatch a null-terminated line:
 
 ```c
 #include "ce_dispatch.h"
+bool accepted = ce_dispatch_from_line("add 10 20");
 ```
 
-Then dispatch commands by calling:
+Handlers return `true` on success. Dispatch returns `false` for an unknown command,
+invalid arguments or a handler rejection. [demo-ce](https://github.com/nidops/demo-ce)
+provides a Zephyr UART integration on the STM32WB55 Nucleo.
 
-```c
-ce_dispatch_from_line("command_name arg1 arg2 ...");
-```
+## Types and limits
 
-Handlers are registered via signatures with hashed command names.
+YAML supports unsigned integers (`u8`, `u16`, `u32`, `u64`), signed integers
+(`i8`, `i16`, `i32`, `i64`), `bool`, strings (`s` or `string`), and hexadecimal
+byte buffers (`u8p`). Long integer names such as `uint32` are also accepted.
 
-### Code Generation
+The current bounds in `inc/ce_types.h` are 255 input characters, seven arguments,
+and a shared 64-byte scratch buffer for decoded byte arguments. Overlong lines
+are rejected. String and byte pointers are borrowed for the duration of the
+handler call; handlers must copy data they retain.
 
-* Command definitions are written in YAML files (e.g., `inputs/demo.yaml`).
-* Python scripts in `tools/` generate C headers and source files based on YAML.
-* Example:
+Byte pointers and scalar length arguments are independent. The application must
+ensure a supplied length does not exceed the decoded data. Dispatch matches
+command hashes, so this interface does not authenticate command names or callers.
+Signature checks use GCC/Clang extensions in C99 mode. No MISRA compliance audit
+or certification is claimed.
 
-```yaml
-# inputs/demo.yaml
-includes:
-  - demo.h
+## Test
 
-commands:
-  - name: cat_string
-    handler: demo_cat_string
-    args:
-      - type: string
-
-  - name: cat_bytes
-    handler: demo_cat_bytes
-    args:
-      - type: u8p
-      - type: u8
-```
+The generator suite exercises schema validation, C99 signature acceptance and
+rejection, concurrent CMake generation, profile changes, and standalone build
+and installation:
 
 ```bash
-cd tools
-make venv
-source ../.venv/bin/activate
-python3 generate_apis.py -i ../inputs/demo.yaml
+.venv/bin/python -m pytest tools/tests -q
 ```
 
-Or just run `python3 generate_apis.py --help` and enjoy.
-
-### Running Unit Tests
-
-* Unit tests are located in `unit_test/` and use GoogleTest.
-* Build tests via CMake:
+The native C/C++ suite requires a C++17 compiler and downloads GoogleTest 1.17.0:
 
 ```bash
-mkdir build && cd build
-cmake .. -DBUILD_TESTS=ON
-make
-ctest
+cmake -S . -B build-tests -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug \
+  -DPython_EXECUTABLE="$PWD/.venv/bin/python"
+cmake --build build-tests --parallel
+ctest --test-dir build-tests --output-on-failure
 ```
 
-Or
+CI runs both suites and checks the default library build and installation.
+The native suite covers dispatch, hashes, parser bounds and invalid inputs.
 
-```bash
-make
-make run_tests
-```
-
-## Supported Argument Types
-
-* UINT8, UINT16, UINT32, UINT64
-* INT8, INT16, INT32, INT64
-* BOOLEAN (true/false)
-* STRING (parsed into bounded internal buffer)
-* Binary buffers via hex string arguments
-
-## Contributing
-
-Contributions and issues are welcome!
+Licensed under Apache-2.0; see [LICENSE](LICENSE).

@@ -149,7 +149,14 @@ def test_signature_checks_compile_under_c99_and_reject_mismatches(tmp_path, argu
     source = tmp_path / "ce_table.c"
     SignatureTableGenerator(commands, ["handlers.h"]).write_to(source)
     result = subprocess.run(
-        ["cc", "-std=c99", "-fsyntax-only", "-I", str(Path(__file__).parents[2] / "inc"), str(source)],
+        [
+            "cc",
+            "-std=c99",
+            "-fsyntax-only",
+            "-I",
+            str(Path(__file__).parents[2] / "inc"),
+            str(source),
+        ],
         capture_output=True,
         text=True,
         timeout=10,

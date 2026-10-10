@@ -1,5 +1,11 @@
 # === Build Artifacts ===
 /build/
+/build-*/
+/artifacts/
+*.local.yaml
+*.local.yml
+.pytest_cache/
+.ruff_cache/
 *.o
 *.a
 *.out

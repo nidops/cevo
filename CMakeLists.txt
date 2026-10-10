@@ -55,6 +55,13 @@ target_include_directories(cevo PUBLIC
     ${CEVO_API_DIR}
 )
 
+# The bundled command profile needs declarations even without unit tests.
+# Applications selecting another profile provide their own handler headers.
+get_filename_component(CEVO_INPUT_PATH "${INPUT_YAML}" REALPATH)
+if(CEVO_INPUT_PATH STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}/inputs/demo.yaml")
+    target_include_directories(cevo PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/examples)
+endif()
+
 # Ensure generated files are built before cevo
 add_dependencies(cevo generate_apis)
 
